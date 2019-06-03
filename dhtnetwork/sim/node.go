@@ -6,7 +6,6 @@ import (
 	"github.com/dist-ribut-us/dht"
 	"github.com/dist-ribut-us/dht/dhtnetwork"
 	mr "math/rand"
-	"sync"
 	"time"
 )
 
@@ -22,8 +21,7 @@ type Node struct {
 	net     *dhtnetwork.Node
 	gv      *GodView
 	send    chan interface{}
-	waiting map[string]seekResponseHandler
-	sync.RWMutex
+	waiting *waiting
 }
 
 type stop struct{}
@@ -37,7 +35,7 @@ func (gv *GodView) AddNode() {
 		net:     dhtnetwork.New(id, 16),
 		gv:      gv,
 		send:    make(chan interface{}, 30),
-		waiting: make(map[string]seekResponseHandler),
+		waiting: newwaiting(),
 	}
 	gv.Lock()
 	gv.nodes[n.net.NodeID.String()] = n
@@ -75,15 +73,11 @@ func (n *Node) handleSeekRequest(req dhtnetwork.SeekRequest) {
 
 func (n *Node) handleSeekResponse(resp dhtnetwork.SeekResponse) {
 	idStr := encodeToString(resp.ID)
-	n.RLock()
-	h := n.waiting[idStr]
-	n.RUnlock()
+	h, _ := n.waiting.get(idStr)
 	if h == nil {
 		return
 	}
-	n.Lock()
-	delete(n.waiting, idStr)
-	n.Unlock()
+	n.waiting.delete(idStr)
 	h.Handle(resp)
 }
 
@@ -101,13 +95,9 @@ func (n *Node) runUpdate() {
 	u := n.net.Update()
 	for ok, id, sr := u.Next(); ok; ok, id, sr = u.Next() {
 		srIDstr := encodeToString(sr.ID)
-		n.Lock()
-		n.waiting[srIDstr] = u
-		n.Unlock()
+		n.waiting.set(srIDstr, u)
 		if !n.gv.Send(id, sr) {
-			n.Lock()
-			delete(n.waiting, srIDstr)
-			n.Unlock()
+			n.waiting.delete(srIDstr)
 			u.HandleNoResponse(sr.ID)
 			continue
 		}
@@ -115,14 +105,10 @@ func (n *Node) runUpdate() {
 		notHandled := true
 		for i := 0; notHandled == true && i < 20; time.Sleep(time.Millisecond * 4) {
 			i++
-			n.RLock()
-			_, notHandled = n.waiting[srIDstr]
-			n.RUnlock()
+			_, notHandled = n.waiting.get(srIDstr)
 		}
 		if notHandled {
-			n.Lock()
-			delete(n.waiting, srIDstr)
-			n.Unlock()
+			n.waiting.delete(srIDstr)
 			u.HandleNoResponse(sr.ID)
 		}
 	}
@@ -140,9 +126,7 @@ func (n *Node) Seek(target dht.NodeID) bool {
 
 	for ok, id, sr := s.Next(); ok; ok, id, sr = s.Next() {
 		srIDstr := encodeToString(sr.ID)
-		n.Lock()
-		n.waiting[srIDstr] = s
-		n.Unlock()
+		n.waiting.set(srIDstr, s)
 		n.gv.Send(id, sr)
 		time.Sleep(time.Millisecond * 2)
 	}
