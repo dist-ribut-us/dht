@@ -121,12 +121,31 @@ func (n *Node) Seek(target dht.NodeID) bool {
 		return b
 	}
 
+	println(n.net.Node.KnownIDs())
+	c := 0
 	for ok, id, sr := s.Next(); ok; ok, id, sr = s.Next() {
+		c++
 		srIDstr := encodeToString(sr.ID)
 		n.waiting.set(srIDstr, s)
 		n.gv.Send(id, sr)
 		time.Sleep(time.Millisecond * 2)
+
+		notHandled := true
+		for i := 0; notHandled == true && i < 20; time.Sleep(time.Millisecond * 4) {
+			i++
+			_, notHandled = n.waiting.get(srIDstr)
+		}
+		if notHandled {
+			n.waiting.delete(srIDstr)
+			s.HandleNoResponse(sr.ID)
+			if s.Responses > 5 && (float64(s.Successes)/float64(s.Responses) < 0.1) {
+				break
+			}
+		}
 	}
+	print(s.Successes)
+	print(" / ")
+	println(s.Responses)
 
 	return found
 }

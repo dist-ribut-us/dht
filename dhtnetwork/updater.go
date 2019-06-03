@@ -76,17 +76,19 @@ func (u *Updater) queueLen() int {
 	return l
 }
 
+const sendLastAfter = 5
+
 func (u *Updater) Next() (bool, dht.NodeID, SeekRequest) {
 	var ln int
 	links := u.network.Links()
 
 	ln = u.queueLen()
-	if ln == 0 && u.idx > 3 && u.idx < links {
+	if ln == 0 && u.idx > sendLastAfter && u.idx < links {
 		// If we're into the sparsly populated tail section, skip ahea and just do
 		// the last bucket. This should fill in a few buckets along the way if
 		// possible
 		sendLast := true
-		for i := 0; i < 3; i++ {
+		for i := 0; i < sendLastAfter; i++ {
 			if len(u.network.Link(u.idx-i)) > 0 {
 				sendLast = false
 				break

@@ -15,6 +15,8 @@ type Seeker struct {
 	Accept     func(SeekResponse) bool
 	done       bool
 	reqID2node map[string]dht.NodeID
+	Responses  int
+	Successes  int
 }
 
 func (n *Node) Seek(target dht.NodeID) *Seeker {
@@ -33,10 +35,12 @@ func (s *Seeker) Handle(r SeekResponse) bool {
 	if s.done == true {
 		return false
 	}
-	nID, found := s.reqID2node[encodeToString(r.ID)]
+	rIDstr := encodeToString(r.ID)
+	nID, found := s.reqID2node[rIDstr]
 	if !found {
 		return false
 	}
+	delete(s.reqID2node, rIDstr)
 	if s.network != nil && !s.SkipUpdate {
 		s.network.AddNodeID(nID, true)
 	}
@@ -46,7 +50,20 @@ func (s *Seeker) Handle(r SeekResponse) bool {
 	if s.Accept != nil && s.Accept(r) {
 		s.done = true
 	}
+	s.Responses++
+	s.Successes++
 	return true
+}
+
+func (s *Seeker) HandleNoResponse(requestID []byte) {
+	if s.done == true {
+		return
+	}
+	_, found := s.reqID2node[encodeToString(requestID)]
+	if !found {
+		return
+	}
+	s.Responses++
 }
 
 func (s *Seeker) seekRequest(id dht.NodeID) SeekRequest {
@@ -63,16 +80,17 @@ func (s *Seeker) seekRequest(id dht.NodeID) SeekRequest {
 	return sr
 }
 
-var MaxQueueDept = 10
+var MaxQueueDepth = 20
 
 func (s *Seeker) Next() (bool, dht.NodeID, SeekRequest) {
 	if s.done {
 		return false, nil, SeekRequest{}
 	}
 	var id dht.NodeID
-	for i := 0; id == nil && i < MaxQueueDept; i++ {
+	for i := 0; i < MaxQueueDepth; i++ {
 		if idi := s.queue.Get(i); !s.sent[idi.String()] {
 			id = idi
+			break
 		}
 	}
 	if id == nil {
