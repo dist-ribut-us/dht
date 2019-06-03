@@ -43,16 +43,21 @@ func (n *Node) AddNodeID(id NodeID, overrideBlacklist bool) bool {
 		}
 	}
 
-	idx := n.Xor(id).LeadingZeros()
-	ins := n.links[idx].AddNodeID(id)
+	d := n.Xor(id)
+	lk := n.links[d.LeadingZeros()]
+	ins, j := lk.AddNodeID(id)
+	needFix := false
 	// if there was a race failure, re-insert
 	for ins == true {
-		lk := n.links[idx]
-		if lk.Get(lk.Search(id)).Equal(id) {
+		x := lk.nodeIDs[j]
+		if x.Equal(id) {
 			break
 		}
-		// println("fix race") // This is happening WAY too much
-		ins = n.links[idx].AddNodeID(id)
+		needFix = true
+		ins, j = lk.AddNodeID(id)
+	}
+	if needFix {
+		println("fixed race condition")
 	}
 
 	return ins

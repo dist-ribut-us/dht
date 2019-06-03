@@ -31,3 +31,21 @@ func TestNode(t *testing.T) {
 	assert.Nil(t, n.Seek(NodeID{16, 100, 100}, true))
 	assert.Equal(t, ns[1], n.Seek(NodeID{32, 213, 222}, true))
 }
+
+func TestFuzzNode(t *testing.T) {
+	ln := 10
+	addNodes := ln * ln * ln
+	for i := 0; i < FuzzLoops; i++ {
+		n := New(randID(ln), 8)
+		for j := 0; j < addNodes; j++ {
+			n.AddNodeID(randID(ln), false)
+			for lkIdx, lk := range n.links {
+				for _, id := range lk.nodeIDs {
+					if !assert.Equal(t, lkIdx, n.Xor(id).LeadingZeros()) {
+						panic("bad zeros")
+					}
+				}
+			}
+		}
+	}
+}

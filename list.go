@@ -86,32 +86,38 @@ func (l *List) AddNodeIDs(ids []NodeID) {
 	}
 }
 
-func (l *List) AddNodeID(n NodeID) bool {
+func (l *List) AddNodeID(n NodeID) (bool, int) {
 	if len(n) != len(l.target) {
-		return false
+		return false, -1
 	}
 
+	l.Lock()
 	d := n.Xor(l.target)
-	l.RLock()
 	diffs, ids := l.diffs, l.nodeIDs
-	l.RUnlock()
 	idx := diffs.Search(d)
 	if ids.Get(idx - 1).Equal(n) {
-		return false
+		l.Unlock()
+		return false, idx - 1
 	}
 
 	extend := false
 	if l.maxLen == -1 || ids.Len() < l.maxLen {
 		extend = true
 	} else if idx == ids.Len() {
-		return false
+		l.Unlock()
+		return false, idx
 	}
 
-	l.Lock()
 	l.nodeIDs = ids.insert(n, idx, extend)
+	if !l.nodeIDs[idx].Equal(n) {
+		panic("something went terribly wrong")
+	}
 	l.diffs = diffs.insert(d, idx, extend)
+	if !l.diffs[idx].Equal(d) {
+		panic("something went terribly wrong")
+	}
 	l.Unlock()
-	return true
+	return true, idx
 }
 
 func (l *List) Search(n NodeID) int {
@@ -120,14 +126,13 @@ func (l *List) Search(n NodeID) int {
 
 func (l *List) RemoveNodeID(n NodeID) bool {
 	d := n.Xor(l.target)
-	l.RLock()
+	l.Lock()
 	diffs, ids := l.diffs, l.nodeIDs
-	l.RUnlock()
 	idx := diffs.Search(d)
 	if !ids.Get(idx - 1).Equal(n) {
+		l.Unlock()
 		return false
 	}
-	l.Lock()
 	l.nodeIDs = ids.Remove(idx)
 	l.diffs = diffs.Remove(idx)
 	l.Unlock()
@@ -143,7 +148,6 @@ func (l *List) Seek(n NodeID) NodeID {
 		return nil
 	}
 	idx := diffs.Search(l.target.Xor(n))
-	println(idx)
 
 	if id := ids.Get(idx - 1); id.Equal(n) {
 		return id

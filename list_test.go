@@ -79,18 +79,23 @@ func TestAddAndRemoveNodeIDs(t *testing.T) {
 		{16, 55, 55},
 	}
 
-	assert.True(t, l.AddNodeID(n[0]))
-	assert.False(t, l.AddNodeID(n[0]))
+	b, _ := l.AddNodeID(n[0])
+	assert.True(t, b)
+	b, _ = l.AddNodeID(n[0])
+	assert.False(t, b)
 
-	assert.True(t, l.AddNodeID(n[1]))
+	b, _ = l.AddNodeID(n[1])
+	assert.True(t, b)
 	assert.Equal(t, n[1], l.nodeIDs[0])
 	assert.Equal(t, n[1].Xor(l.target), l.diffs[0])
 	assert.Equal(t, n[0], l.nodeIDs[1])
 
-	assert.True(t, l.AddNodeID(n[2]))
+	b, _ = l.AddNodeID(n[2])
+	assert.True(t, b)
 	assert.Equal(t, n[2], l.nodeIDs[2])
 
-	assert.False(t, l.AddNodeID(n[3]))
+	b, _ = l.AddNodeID(n[3])
+	assert.False(t, b)
 
 	assert.Len(t, l.nodeIDs, 3)
 	assert.True(t, l.RemoveNodeID(l.nodeIDs[len(l.nodeIDs)-1]))
@@ -100,7 +105,8 @@ func TestAddAndRemoveNodeIDs(t *testing.T) {
 	assert.Len(t, l.nodeIDs, 1)
 	assert.Len(t, l.diffs, 1)
 
-	assert.True(t, l.AddNodeID(n[3]))
+	b, _ = l.AddNodeID(n[3])
+	assert.True(t, b)
 }
 
 func TestSeek(t *testing.T) {
