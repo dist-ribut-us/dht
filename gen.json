@@ -1,0 +1,8 @@
+{
+  "Package": "dht",
+  "TSMaps": [{
+    "Key":"string",
+    "Val":"bool",
+    "Name": "blacklist"
+  }]
+}
