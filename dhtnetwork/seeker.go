@@ -27,7 +27,7 @@ func (n *Node) Seek(target dht.NodeID) *Seeker {
 		reqID2node: make(map[string]dht.NodeID),
 	}
 
-	s.Handle(n.HandleSeek(s.seekRequest(n.NodeID)))
+	s.Handle(n.HandleSeek(s.seekRequest(n.NodeID, false)))
 	return s
 }
 
@@ -66,10 +66,11 @@ func (s *Seeker) HandleNoResponse(requestID []byte) {
 	s.Responses++
 }
 
-func (s *Seeker) seekRequest(id dht.NodeID) SeekRequest {
+func (s *Seeker) seekRequest(id dht.NodeID, mustBeCloser bool) SeekRequest {
 	sr := SeekRequest{
-		Target: s.queue.Target(),
-		ID:     make([]byte, DefaultIDLen),
+		Target:       s.queue.Target(),
+		ID:           make([]byte, DefaultIDLen),
+		MustBeCloser: mustBeCloser,
 	}
 	rand.Read(sr.ID)
 	if s.network != nil {
@@ -96,5 +97,5 @@ func (s *Seeker) Next() (bool, dht.NodeID, SeekRequest) {
 	if id == nil {
 		return false, nil, SeekRequest{}
 	}
-	return true, id, s.seekRequest(id)
+	return true, id, s.seekRequest(id, true)
 }

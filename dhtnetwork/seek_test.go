@@ -33,8 +33,9 @@ func TestHandleSeek(t *testing.T) {
 	assert.Equal(t, ns[0], resp.Nodes[0])
 
 	req = SeekRequest{
-		ID:     []byte{1, 2, 3},
-		Target: ns[1],
+		ID:           []byte{1, 2, 3},
+		Target:       ns[1],
+		MustBeCloser: true,
 	}
 	resp = n.HandleSeek(req)
 	assert.Equal(t, ns[1], resp.Nodes[0])

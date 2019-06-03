@@ -14,14 +14,20 @@ type SeekRequest struct {
 	// Target of the seek
 	Target dht.NodeID
 	// Node that is seeking (so a response can be sent)
-	From dht.NodeID
+	From         dht.NodeID
+	MustBeCloser bool
 }
 
-var seekRequestPrefixLengths = []int{2, 2, 0}
+var seekRequestPrefixLengths = []int{2, -1, 2, 0}
 
 func (s *SeekRequest) Marshal() ([]byte, error) {
+	mustBeCloser := []byte{0}
+	if s.MustBeCloser {
+		mustBeCloser[0] = 1
+	}
 	data := [][]byte{
 		s.ID,
+		mustBeCloser,
 		s.Target,
 		s.From,
 	}
@@ -34,8 +40,11 @@ func (s *SeekRequest) Unmarshal(b []byte) error {
 		return err
 	}
 	s.ID = data[0]
-	s.Target = data[1]
-	s.From = data[2]
+	s.Target = data[2]
+	s.From = data[3]
+	if data[1][0] == 1 {
+		s.MustBeCloser = true
+	}
 	return nil
 }
 
@@ -104,7 +113,7 @@ func (n *Node) bruteSeek(r SeekRequest) SeekResponse {
 	ln := n.Links()
 	for i := 0; i < ln; i++ {
 		for _, id := range n.Link(i) {
-			if id.Xor(r.Target).Compare(d) == -1 {
+			if !r.MustBeCloser || id.Xor(r.Target).Compare(d) == -1 {
 				closer = append(closer, id)
 			}
 		}

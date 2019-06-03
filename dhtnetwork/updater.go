@@ -14,9 +14,10 @@ type action struct {
 
 func (u *Updater) seekRequest(a action) (dht.NodeID, SeekRequest) {
 	sr := SeekRequest{
-		ID:     make([]byte, DefaultIDLen),
-		Target: a.target,
-		From:   u.network.NodeID,
+		ID:           make([]byte, DefaultIDLen),
+		Target:       a.target,
+		From:         u.network.NodeID,
+		MustBeCloser: true,
 	}
 	rand.Read(sr.ID)
 	u.waiting[encodeToString(sr.ID)] = a
