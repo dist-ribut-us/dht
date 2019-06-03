@@ -37,11 +37,8 @@ func (gv *GodView) AddNode() {
 		send:    make(chan interface{}, 30),
 		waiting: newwaiting(),
 	}
-	gv.Lock()
-	gv.nodes[n.net.NodeID.String()] = n
-	gv.IDs = append(gv.IDs, n.net.NodeID)
-	gv.Unlock()
 
+	gv.add(n)
 	go n.run()
 }
 

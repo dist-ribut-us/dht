@@ -134,3 +134,10 @@ func (gv *GodView) send(n *Node, msg interface{}) bool {
 		return false
 	}
 }
+
+func (gv *GodView) add(n *Node) {
+	gv.Lock()
+	gv.nodes[n.net.String()] = n
+	gv.IDs = append(gv.IDs, n.net.NodeID)
+	gv.Unlock()
+}
