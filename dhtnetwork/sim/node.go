@@ -138,9 +138,6 @@ func (n *Node) Seek(target dht.NodeID) bool {
 		if notHandled {
 			n.waiting.delete(srIDstr)
 			s.HandleNoResponse(sr.ID)
-			if s.Responses > 5 && (float64(s.Successes)/float64(s.Responses) < 0.1) {
-				break
-			}
 		}
 	}
 	print(s.Successes)

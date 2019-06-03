@@ -96,8 +96,7 @@ func (u *Updater) Next() (bool, dht.NodeID, SeekRequest) {
 		}
 		// if we just skip to the end always, we should fill some necessary buckets
 		// along the way. This nearly works but drops success from ~97% to ~75%.
-		justForTesting := false
-		if sendLast || justForTesting {
+		if sendLast {
 			u.idx = links - 1
 		}
 	}
