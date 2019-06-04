@@ -3,7 +3,6 @@ package dhtnetwork
 import (
 	"github.com/dist-ribut-us/dht"
 	"github.com/dist-ribut-us/serial"
-	"sort"
 )
 
 // SeekRequest can be sent to another node on the network as a step in searching
@@ -106,33 +105,6 @@ func (n *Node) HandleSeek(r SeekRequest) SeekResponse {
 	return SeekResponse{
 		ID:    r.ID,
 		Nodes: n.SeekN(r.Target, n.ReturnNodes, r.MustBeCloser),
-	}
-}
-
-// There's a more efficient way to do this, but this works. When I write the
-// efficient handler, I can use this for fuzzing.
-func (n *Node) bruteSeek(r SeekRequest) SeekResponse {
-	var closer []dht.NodeID
-	d := n.Xor(r.Target)
-	ln := n.Links()
-	for i := 0; i < ln; i++ {
-		for _, id := range n.Link(i) {
-			if !r.MustBeCloser || id.Xor(r.Target).Compare(d) == -1 {
-				closer = append(closer, id)
-			}
-		}
-	}
-	sort.Slice(closer, func(i, j int) bool {
-		di := closer[i].Xor(r.Target)
-		dj := closer[i].Xor(r.Target)
-		return di.Compare(dj) == -1
-	})
-	if len(closer) > n.ReturnNodes {
-		closer = closer[:n.ReturnNodes]
-	}
-	return SeekResponse{
-		ID:    r.ID,
-		Nodes: closer,
 	}
 }
 
