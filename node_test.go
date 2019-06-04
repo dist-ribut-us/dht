@@ -37,6 +37,7 @@ func TestFuzzNode(t *testing.T) {
 	addNodes := ln * ln * ln
 	for i := 0; i < FuzzLoops; i++ {
 		n := New(randID(ln), 8)
+
 		for j := 0; j < addNodes; j++ {
 			n.AddNodeID(randID(ln), false)
 			for lkIdx, lk := range n.links {

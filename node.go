@@ -73,13 +73,22 @@ func (n *Node) RemoveNodeID(id NodeID, blacklist bool) {
 
 func (n *Node) Seek(target NodeID, mustBeCloser bool) NodeID {
 	return n.bruteSeek(target, mustBeCloser)
+}
 
+func (n *Node) elegantSeek(target NodeID, mustBeCloser bool) NodeID {
+	ln := len(target)
+	if ln != len(n.NodeID) {
+		return nil
+	}
 	d := n.Xor(target)
-	idx := d.LeadingZeros()
-	print("seek idx: ")
-	best := n.links[idx].Seek(target)
-	for ; best == nil && idx >= 0; idx-- {
-		best = n.links[idx].Seek(target)
+	var best, bestd NodeID
+	for idx := d.LeadingZeros(); best == nil && idx < ln; idx++ {
+		t := n.links[idx].Seek(target)
+		td := t.Xor(target)
+		if best == nil || td.Compare(bestd) == -1 {
+			best = t
+			bestd = td
+		}
 	}
 
 	if best == nil || (mustBeCloser && d.Compare(best.Xor(target)) == -1) {

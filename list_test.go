@@ -122,20 +122,22 @@ func TestSeek(t *testing.T) {
 	}
 
 	assert.Equal(t, ns[0], l.Seek(NodeID{1, 4, 16}))
-	// assert.Equal(t, ns[0], l.Seek(NodeID{2, 10, 100}))
-	// assert.Equal(t, ns[0], l.Seek(NodeID{4, 55, 54}))
-	// assert.Equal(t, ns[0], l.Seek(NodeID{4, 55, 55}))
-	// assert.Equal(t, ns[1], l.Seek(NodeID{4, 55, 56}))
-	// assert.Equal(t, ns[2], l.Seek(NodeID{64, 55, 55}))
-	// assert.Equal(t, ns[2], l.Seek(NodeID{67, 55, 56}))
+	assert.Equal(t, ns[0], l.Seek(NodeID{2, 10, 100}))
+	assert.Equal(t, ns[0], l.Seek(NodeID{4, 55, 54}))
+	assert.Equal(t, ns[0], l.Seek(NodeID{4, 55, 55}))
+	assert.Equal(t, ns[0], l.Seek(NodeID{4, 55, 56}))
+	assert.Equal(t, ns[1], l.Seek(NodeID{16, 55, 56}))
+	assert.Equal(t, ns[1], l.Seek(NodeID{24, 55, 56}))
+	assert.Equal(t, ns[2], l.Seek(NodeID{64, 55, 55}))
+	assert.Equal(t, ns[2], l.Seek(NodeID{67, 55, 56}))
 }
 
-func TestAddFuzz(t *testing.T) {
-	ln := 10
-	maxLen := 8
+func TestFuzzAdd(t *testing.T) {
+	ln := 3
+	maxLen := 20
 	for i := 0; i < FuzzLoops; i++ {
 		l := NewList(randID(ln), maxLen)
-		for j := 0; j < maxLen*2; j++ {
+		for j := 0; j < maxLen*5; j++ {
 			l.AddNodeID(randID(ln))
 			ok := assert.Equal(t, l.nodeIDs[0].Xor(l.target), l.diffs[0])
 			for j := 1; j < len(l.nodeIDs); j++ {
@@ -155,6 +157,12 @@ func randID(ln int) NodeID {
 	id := make(NodeID, ln)
 	rand.Read(id)
 	return id
+}
+
+func randBool() bool {
+	b := []byte{0}
+	rand.Read(b)
+	return b[0] > 127
 }
 
 func TestNodeIDlistInsert(t *testing.T) {

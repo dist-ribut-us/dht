@@ -39,9 +39,10 @@ func (n nodeIDlist) insert(id NodeID, idx int, extend bool) nodeIDlist {
 	return nu
 }
 
-func (n nodeIDlist) Search(id NodeID) int {
+// Search finds the first id in the list that is greater than the target.
+func (n nodeIDlist) Search(target NodeID) int {
 	idx := sort.Search(len(n), func(i int) bool {
-		return id.Compare(n[i]) == -1
+		return target.Compare(n[i]) == -1
 	})
 	return idx
 }
@@ -91,8 +92,8 @@ func (l *List) AddNodeID(n NodeID) (bool, int) {
 		return false, -1
 	}
 
-	l.Lock()
 	d := n.Xor(l.target)
+	l.Lock()
 	diffs, ids := l.diffs, l.nodeIDs
 	idx := diffs.Search(d)
 	if ids.Get(idx - 1).Equal(n) {
@@ -109,13 +110,7 @@ func (l *List) AddNodeID(n NodeID) (bool, int) {
 	}
 
 	l.nodeIDs = ids.insert(n, idx, extend)
-	if !l.nodeIDs[idx].Equal(n) {
-		panic("something went terribly wrong")
-	}
 	l.diffs = diffs.insert(d, idx, extend)
-	if !l.diffs[idx].Equal(d) {
-		panic("something went terribly wrong")
-	}
 	l.Unlock()
 	return true, idx
 }
@@ -140,20 +135,65 @@ func (l *List) RemoveNodeID(n NodeID) bool {
 }
 
 // Seek returns the closest node to n in the list
-func (l *List) Seek(n NodeID) NodeID {
+func (l *List) Seek(target NodeID) NodeID {
+	id, _ := l.bruteSeek(target)
+	return id
+}
+
+func (l *List) elegantSeek(target NodeID) (NodeID, int) {
 	l.RLock()
 	diffs, ids := l.diffs, l.nodeIDs
 	l.RUnlock()
-	if len(ids) == 0 {
-		return nil
-	}
-	idx := diffs.Search(l.target.Xor(n))
-
-	if id := ids.Get(idx - 1); id.Equal(n) {
-		return id
+	ln := len(ids)
+	if ln == 0 {
+		return nil, -1
 	}
 
-	return ids.Get(idx)
+	d := target.Xor(l.target)
+	idx := diffs.Search(d)
+	if idx == ln {
+		idx--
+	}
+
+	return l.nodeIDs[idx], idx
+}
+
+func (l *List) bruteSeek(target NodeID) (NodeID, int) {
+	l.RLock()
+	ids := l.nodeIDs
+	l.RUnlock()
+	ln := len(ids)
+	if ln == 0 {
+		return nil, -1
+	}
+	if ln == 1 {
+		return ids[0], 0
+	}
+
+	idx := 0
+	best := ids[idx]
+	bestd := best.Xor(target)
+	for i, id := range ids[1:] {
+		d := id.Xor(target)
+		if d.Compare(bestd) == -1 {
+			best = id
+			bestd = d
+			idx = i
+		}
+	}
+
+	return best, idx
+}
+
+func (l *List) reorder(target NodeID) []int {
+	l2 := NewList(target, l.maxLen)
+	out := make([]int, len(l.nodeIDs))
+	l2.AddNodeIDs(l.nodeIDs)
+
+	for i := range out {
+		out[i] = l2.Search(l.nodeIDs[i]) - 1
+	}
+	return out
 }
 
 func (l *List) Target() NodeID {

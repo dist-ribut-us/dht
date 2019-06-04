@@ -44,6 +44,10 @@ func (n NodeID) FlipBit(idx int) NodeID {
 	return out
 }
 
+func (n NodeID) Bit(idx uint) byte {
+	return (n[idx>>3] >> (7 - idx&7)) & 1
+}
+
 func (n NodeID) Compare(n2 NodeID) int {
 	return bytes.Compare(n, n2)
 }

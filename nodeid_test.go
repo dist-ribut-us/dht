@@ -97,3 +97,13 @@ func TestAdd(t *testing.T) {
 		})
 	}
 }
+
+func TestBit(t *testing.T) {
+	n := NodeID{5, 8}
+	zero := byte(0)
+	one := byte(1)
+	assert.Equal(t, zero, n.Bit(0))
+	assert.Equal(t, one, n.Bit(7))
+	assert.Equal(t, zero, n.Bit(8))
+	assert.Equal(t, one, n.Bit(12))
+}
