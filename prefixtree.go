@@ -112,9 +112,9 @@ func (p *prefixBranch) prune(n uint, seenAllowed bool) bool {
 	}
 
 	if p.val != nil {
-		if p.descendants != 1 {
-			panic("oh boy")
-		}
+		// if p.descendants != 1 {
+		// 	panic("oh boy")
+		// }
 		if n > 0 {
 			// if n != 1 {
 			// 	println(n)

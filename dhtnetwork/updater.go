@@ -30,6 +30,7 @@ type Updater struct {
 	waiting map[string]action
 	queued  map[string]bool
 	idx     int
+	depth   int
 	sync.RWMutex
 }
 
@@ -38,6 +39,7 @@ func (n *Node) Update() *Updater {
 		network: n,
 		waiting: make(map[string]action),
 		queued:  make(map[string]bool),
+		depth:   10,
 		idx:     1,
 	}
 
@@ -47,7 +49,7 @@ func (n *Node) Update() *Updater {
 }
 
 func (u *Updater) queueIdx(idx int) bool {
-	target := u.network.LinkTarget(idx)
+	target := u.network.NodeID.FlipBit(idx)
 	id := u.network.Node.Seek(target, false)
 	if id == nil {
 		return false
@@ -77,36 +79,20 @@ func (u *Updater) queueLen() int {
 	return l
 }
 
-const sendLastAfter = 5
-
 func (u *Updater) Next() (bool, dht.NodeID, SeekRequest) {
 	var ln int
-	links := u.network.Links()
+	links := len(u.network.NodeID) * 8
 
 	ln = u.queueLen()
-	if ln == 0 && u.idx > sendLastAfter && u.idx < links {
-		// If we're into the sparsly populated tail section, skip ahea and just do
-		// the last bucket. This should fill in a few buckets along the way if
-		// possible
-		sendLast := true
-		for i := 0; i < sendLastAfter; i++ {
-			if len(u.network.Link(u.idx-i)) > 0 {
-				sendLast = false
-				break
-			}
-		}
-		// if we just skip to the end always, we should fill some necessary buckets
-		// along the way. This nearly works but drops success from ~97% to ~75%.
-		if sendLast {
-			u.idx = links - 1
-		}
-	}
 
 	// By lazy populating the queue, as responses come back, that can be used in
 	// later requests.
 	for ; ln == 0; ln = u.queueLen() {
-		if u.idx == links {
+		if u.idx >= links {
 			return false, nil, SeekRequest{}
+		}
+		if u.idx > u.depth {
+			u.idx = links - 1
 		}
 		u.queueIdx(u.idx)
 		u.idx++
@@ -132,12 +118,21 @@ func (u *Updater) Handle(r SeekResponse) bool {
 	u.Unlock()
 	u.network.AddNodeID(a.NodeID, true)
 	updated := false
-	for _, n := range r.Nodes {
-		if u.network.AddNodeID(n, false) {
-			updated = true
-			u.queueIdx(a.idx)
+	updated = len(r.Nodes) > 0
+	u.Lock()
+	for _, id := range r.Nodes {
+		k := id.String() + a.target.String()
+		if u.queued[k] {
+			continue
 		}
+		u.queued[k] = true
+		u.queue = append(u.queue, action{
+			target: a.target,
+			NodeID: id,
+			idx:    a.idx,
+		})
 	}
+	u.Unlock()
 	return updated
 }
 

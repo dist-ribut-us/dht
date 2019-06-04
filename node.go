@@ -75,7 +75,9 @@ func (n *Node) RemoveNodeID(id NodeID, blacklist bool) {
 		n.blacklist.set(id.String(), true)
 	}
 	idx := n.Xor(id).LeadingZeros()
-	n.links[idx].RemoveNodeID(id)
+	if idx > 0 && idx < len(n.links) {
+		n.links[idx].RemoveNodeID(id)
+	}
 	n.tree.remove(id)
 }
 
