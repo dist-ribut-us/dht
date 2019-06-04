@@ -158,6 +158,26 @@ func (p *prefixBranch) prune(n uint, seenAllowed bool) bool {
 	return canRemove && p.descendants == 0
 }
 
+func (p *prefixBranch) removeNode(id NodeID, depth uint) {
+	if p.val != nil {
+		if p.val.Equal(id) {
+			p.val = nil
+			p.descendants = 0
+		}
+	}
+
+	bit := id.Bit(depth)
+	if p.branches[bit] == nil {
+		return
+	}
+	p.branches[bit].removeNode(id, depth+1)
+	p.descendants = p.branches[bit].descendants
+	bit ^= 1
+	if p.branches[bit] != nil {
+		p.descendants += p.branches[bit].descendants
+	}
+}
+
 type tree struct {
 	root    *prefixBranch
 	id      NodeID
@@ -203,4 +223,8 @@ func (t *tree) prune() {
 
 func (t *tree) Len() int {
 	return int(t.root.descendants) - 1
+}
+
+func (t *tree) remove(id NodeID) {
+	t.root.removeNode(id, 0)
 }

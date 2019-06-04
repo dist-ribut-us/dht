@@ -41,6 +41,11 @@ func TestTree(t *testing.T) {
 	assert.Len(t, s, 2)
 	assert.Equal(t, ids[1], s[0])
 	assert.Equal(t, ids[0], s[1])
+
+	tr.remove(ids[0])
+	s = tr.searchn(ids[1], 5, NodeID{110, 0, 1})
+	assert.Len(t, s, 1)
+	assert.Equal(t, ids[1], s[0])
 }
 
 func TestToPrune(t *testing.T) {
