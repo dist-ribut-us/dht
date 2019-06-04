@@ -97,23 +97,6 @@ func (n *Node) SeekN(target NodeID, i int, mustBeCloser bool) []NodeID {
 	return n.tree.searchn(target, i, c)
 }
 
-func (n *Node) Link(idx int) []NodeID {
-	return n.links[idx].nodeIDs
-}
-
-func (n *Node) Links() int {
-	return len(n.links)
-}
-
-func (n *Node) LinkTarget(idx int) NodeID {
-	return n.links[idx].Target()
-}
-
 func (n *Node) KnownIDs() int {
-	ln := len(n.links)
-	c := 0
-	for i := 0; i < ln; i++ {
-		c += n.links[i].nodeIDs.Len()
-	}
-	return c
+	return n.tree.descendants()
 }

@@ -91,7 +91,7 @@ func (n *Node) runUpdate() {
 	}
 	n.runningUpdate = true
 
-	for len(n.net.Link(0)) == 0 {
+	for n.net.KnownIDs() < 20 {
 		n.net.AddNodeID(n.gv.RandID(), true)
 	}
 

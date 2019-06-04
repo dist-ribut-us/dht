@@ -249,3 +249,10 @@ func (t *tree) remove(id NodeID) {
 	t.root.removeNode(id, 0)
 	t.Unlock()
 }
+
+func (t *tree) descendants() int {
+	t.RLock()
+	d := int(t.root.descendants)
+	t.RUnlock()
+	return d
+}
