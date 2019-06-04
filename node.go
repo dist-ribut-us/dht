@@ -80,7 +80,11 @@ func (n *Node) RemoveNodeID(id NodeID, blacklist bool) {
 }
 
 func (n *Node) Seek(target NodeID, mustBeCloser bool) NodeID {
-	return n.elegantSeek(target, mustBeCloser)
+	best := n.tree.search(target)
+	if mustBeCloser && n.Xor(target).Compare(best.Xor(target)) == -1 {
+		return nil
+	}
+	return best
 }
 
 func (n *Node) SeekN(target NodeID, i int, mustBeCloser bool) []NodeID {
@@ -89,31 +93,6 @@ func (n *Node) SeekN(target NodeID, i int, mustBeCloser bool) []NodeID {
 		c = n.Xor(target)
 	}
 	return n.tree.searchn(target, i, c)
-}
-
-func (n *Node) elegantSeek(target NodeID, mustBeCloser bool) NodeID {
-	best := n.tree.search(target)
-	if mustBeCloser && n.Xor(target).Compare(best.Xor(target)) == -1 {
-		return nil
-	}
-	return best
-}
-
-func (n *Node) bruteSeek(target NodeID, mustBeCloser bool) NodeID {
-	var best, d NodeID
-	ln := n.Links()
-	for i := 0; i < ln; i++ {
-		for _, id := range n.Link(i) {
-			did := id.Xor(target)
-			if best == nil || did.Compare(d) == -1 {
-				best, d = id, did
-			}
-		}
-	}
-	if mustBeCloser && n.Xor(target).Compare(d) == -1 {
-		return nil
-	}
-	return best
 }
 
 func (n *Node) Link(idx int) []NodeID {
