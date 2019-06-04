@@ -2,29 +2,19 @@ package dht
 
 type Node struct {
 	NodeID
-	links     []*List
 	blacklist *blacklist
 	tree      *tree
 }
 
 func New(id []byte, startBuffers int) *Node {
-	n := &Node{
-		NodeID:    NodeID(id),
-		blacklist: newblacklist(),
-		links:     make([]*List, len(id)*8),
-		tree:      newTree(NodeID(id), 64),
-	}
 	if startBuffers < 1 {
 		startBuffers = 1
 	}
-	i := 0
-	for ; startBuffers > 1 && i < len(n.links); i, startBuffers = i+1, startBuffers/2 {
-		n.links[i] = NewList(n.FlipBit(i), startBuffers)
+	return &Node{
+		NodeID:    NodeID(id),
+		blacklist: newblacklist(),
+		tree:      newTree(NodeID(id), startBuffers),
 	}
-	for ; i < len(n.links); i++ {
-		n.links[i] = NewList(n.FlipBit(i), 1)
-	}
-	return n
 }
 
 func (n *Node) blacklisted(idStr string) bool {
@@ -32,16 +22,16 @@ func (n *Node) blacklisted(idStr string) bool {
 	return b
 }
 
-func (n *Node) AddNodeID(id NodeID, overrideBlacklist bool) bool {
+func (n *Node) AddNodeID(id NodeID, overrideBlacklist bool) {
 	if id == nil || n.Equal(id) {
-		return false
+		return
 	}
 
 	if idStr := id.String(); n.blacklisted(idStr) {
 		if overrideBlacklist {
 			n.blacklist.delete(idStr)
 		} else {
-			return false
+			return
 		}
 	}
 
@@ -49,34 +39,11 @@ func (n *Node) AddNodeID(id NodeID, overrideBlacklist bool) bool {
 	if n.tree.toPrune >= uint(n.tree.startBuffers) {
 		n.tree.prune()
 	}
-
-	d := n.Xor(id)
-	lk := n.links[d.LeadingZeros()]
-	ins, j := lk.AddNodeID(id)
-	needFix := false
-	// if there was a race failure, re-insert
-	for ins == true {
-		x := lk.nodeIDs[j]
-		if x.Equal(id) {
-			break
-		}
-		needFix = true
-		ins, j = lk.AddNodeID(id)
-	}
-	if needFix {
-		println("fixed race condition")
-	}
-
-	return ins
 }
 
 func (n *Node) RemoveNodeID(id NodeID, blacklist bool) {
 	if blacklist {
 		n.blacklist.set(id.String(), true)
-	}
-	idx := n.Xor(id).LeadingZeros()
-	if idx > 0 && idx < len(n.links) {
-		n.links[idx].RemoveNodeID(id)
 	}
 	n.tree.remove(id)
 }
