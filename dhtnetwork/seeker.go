@@ -6,8 +6,10 @@ import (
 	"sort"
 )
 
+// DefaultIDLen is the lenght of SeekRequest IDs
 var DefaultIDLen = 10
 
+// Seeker manages Seeking a resource on the network
 type Seeker struct {
 	target     dht.NodeID
 	SkipUpdate bool
@@ -21,6 +23,7 @@ type Seeker struct {
 	Successes  int
 }
 
+// Seek creates a Seeker for the given target.
 func (n *Node) Seek(target dht.NodeID) *Seeker {
 	s := &Seeker{
 		target:     target,
@@ -29,10 +32,11 @@ func (n *Node) Seek(target dht.NodeID) *Seeker {
 		reqID2node: make(map[string]dht.NodeID),
 	}
 
-	s.Handle(n.HandleSeek(s.seekRequest(n.NodeID, false)))
+	s.Handle(n.HandleSeek(s.seekRequest(n.ID(), false)))
 	return s
 }
 
+// Handle a SeekResponse and add the nodes in the response to the queue
 func (s *Seeker) Handle(r SeekResponse) bool {
 	if s.done == true {
 		return false
@@ -59,6 +63,7 @@ func (s *Seeker) Handle(r SeekResponse) bool {
 	return true
 }
 
+// HandleNoResponse handles the case that a request never got a response.
 func (s *Seeker) HandleNoResponse(requestID []byte) {
 	if s.done == true {
 		return
@@ -78,21 +83,24 @@ func (s *Seeker) seekRequest(id dht.NodeID, mustBeCloser bool) SeekRequest {
 	}
 	rand.Read(sr.ID)
 	if s.network != nil {
-		sr.From = s.network.Copy()
+		sr.From = s.network.ID()
 	}
 	s.sent[id.String()] = true
 	s.reqID2node[encodeToString(sr.ID)] = id
 	return sr
 }
 
-var MaxQueueDepth = 20
+var maxQueueDepth = 20
 
+// Next returns a bool indication if there this is a valid request, the NodeID
+// the request should be sent to and a SeekRequest. It is meant to be used in a
+// loop
 func (s *Seeker) Next() (bool, dht.NodeID, SeekRequest) {
 	if s.done {
 		return false, nil, SeekRequest{}
 	}
 	var id dht.NodeID
-	for i := 0; i < MaxQueueDepth && i < len(s.queue); i++ {
+	for i := 0; i < maxQueueDepth && i < len(s.queue); i++ {
 		if idi := s.queue[i]; !s.sent[idi.String()] {
 			id = idi
 			break

@@ -16,7 +16,7 @@ func (u *Updater) seekRequest(a action) (dht.NodeID, SeekRequest) {
 	sr := SeekRequest{
 		ID:           make([]byte, DefaultIDLen),
 		Target:       a.target,
-		From:         u.network.NodeID,
+		From:         u.network.ID(),
 		MustBeCloser: true,
 	}
 	rand.Read(sr.ID)
@@ -24,6 +24,7 @@ func (u *Updater) seekRequest(a action) (dht.NodeID, SeekRequest) {
 	return a.NodeID, sr
 }
 
+// Updater will manage updating the network connections
 type Updater struct {
 	network *Node
 	queue   []action
@@ -34,6 +35,8 @@ type Updater struct {
 	sync.RWMutex
 }
 
+// Update returns and Updater that will update the links that keep the node
+// connected to the network.
 func (n *Node) Update() *Updater {
 	u := &Updater{
 		network: n,
@@ -49,7 +52,7 @@ func (n *Node) Update() *Updater {
 }
 
 func (u *Updater) queueIdx(idx int) bool {
-	target := u.network.NodeID.FlipBit(idx)
+	target := u.network.ID().FlipBit(idx)
 	id := u.network.Node.Seek(target, false)
 	if id == nil {
 		return false
@@ -79,9 +82,11 @@ func (u *Updater) queueLen() int {
 	return l
 }
 
+// Next returns a bool indication if the SeekRequest is valid, the node to send
+// the SeekRequest to and a SeekRequest. It is meant to be used with a loop.
 func (u *Updater) Next() (bool, dht.NodeID, SeekRequest) {
 	var ln int
-	links := len(u.network.NodeID) * 8
+	links := len(u.network.ID()) * 8
 
 	ln = u.queueLen()
 
@@ -136,6 +141,7 @@ func (u *Updater) Handle(r SeekResponse) bool {
 	return updated
 }
 
+// HandleNoResponse updates the Updater when the request is never answered.
 func (u *Updater) HandleNoResponse(requestID []byte) {
 	idStr := encodeToString(requestID)
 	u.RLock()

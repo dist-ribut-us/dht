@@ -12,6 +12,7 @@ var decodeString = base64.URLEncoding.DecodeString
 // NodeID ID represented by a byte slice
 type NodeID []byte
 
+// Xor returns a NodeID that is the Xor of the two Nodes
 func (n NodeID) Xor(n2 NodeID) NodeID {
 	if len(n) != len(n2) {
 		return nil
@@ -23,59 +24,32 @@ func (n NodeID) Xor(n2 NodeID) NodeID {
 	return out
 }
 
-func (n NodeID) LeadingZeros() int {
-	var l int
-	for i := 0; i < len(n); i, l = i+1, l+8 {
-		if n[i] != 0 {
-			b := n[i]
-			for ; b < 128; l++ {
-				b <<= 1
-			}
-			break
-		}
-	}
-	return l
-}
-
+// FlipBit returns a NodeID with the bit at idx flipped
 func (n NodeID) FlipBit(idx int) NodeID {
 	out := make(NodeID, len(n))
 	copy(out, n)
-	out[idx/8] ^= (128 >> uint(idx%8))
+	out[idx>>3] ^= (128 >> uint(idx&7))
 	return out
 }
 
+// Bit returns the bit at idx
 func (n NodeID) Bit(idx uint) byte {
 	return (n[idx>>3] >> (7 - idx&7)) & 1
 }
 
+// Compare two NodeIds. Returns -1 if n < n2, 0 if n == n2 and 1 if n > n2
 func (n NodeID) Compare(n2 NodeID) int {
 	return bytes.Compare(n, n2)
 }
 
+// Equal reutrns true if n == n2
 func (n NodeID) Equal(n2 NodeID) bool {
 	return bytes.Equal(n, n2)
 }
 
+// String encodes n as a string
 func (n NodeID) String() string {
 	return encodeToString(n)
-}
-
-func (n NodeID) BitStr() string {
-	out := make([]byte, len(n)*9-1)
-	for j, b := range n {
-		if j != 0 {
-			out[j*9-1] = '.'
-		}
-		for i := 0; i < 8; i++ {
-			if b > 127 {
-				out[j*9+i] = '1'
-			} else {
-				out[j*9+i] = '0'
-			}
-			b <<= 1
-		}
-	}
-	return string(out)
 }
 
 // Add the node values and handle carry logic from least significant byte (last)
@@ -94,15 +68,7 @@ func (n NodeID) Add(n2 NodeID) NodeID {
 	return b
 }
 
-// Inc returns the next largest node. Since Seek is exclusive, this can be used
-// to do an inclusive seek.
-func (n NodeID) Inc() NodeID {
-	ln := len(n)
-	inc := make(NodeID, ln)
-	inc[ln-1] = 1
-	return n.Add(inc)
-}
-
+// Copy the NodeID
 func (n NodeID) Copy() NodeID {
 	cp := make(NodeID, len(n))
 	copy(cp, n)

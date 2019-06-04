@@ -22,32 +22,6 @@ func TestXor(t *testing.T) {
 	assert.Equal(t, NodeID{3, 7}, a.Xor(b))
 }
 
-func TestLeadingZeros(t *testing.T) {
-	tt := map[string]struct {
-		NodeID
-		expected int
-	}{
-		"Basic": {
-			NodeID:   NodeID{128, 0},
-			expected: 0,
-		},
-		"2-Zeros": {
-			NodeID:   NodeID{0, 0},
-			expected: 16,
-		},
-		"1,0": {
-			NodeID:   NodeID{1, 0},
-			expected: 7,
-		},
-	}
-
-	for name, tc := range tt {
-		t.Run(name, func(t *testing.T) {
-			assert.Equal(t, tc.expected, tc.LeadingZeros())
-		})
-	}
-}
-
 func TestFlipBit(t *testing.T) {
 	tt := map[string]struct {
 		NodeID

@@ -19,6 +19,7 @@ type SeekRequest struct {
 
 var seekRequestPrefixLengths = []int{2, -1, 2, 0}
 
+// Marshal serializes the SeekRequest
 func (s *SeekRequest) Marshal() ([]byte, error) {
 	mustBeCloser := []byte{0}
 	if s.MustBeCloser {
@@ -33,6 +34,7 @@ func (s *SeekRequest) Marshal() ([]byte, error) {
 	return serial.MarshalByteSlices(seekRequestPrefixLengths, data)
 }
 
+// Unmarshal deserializes the SeekRequest
 func (s *SeekRequest) Unmarshal(b []byte) error {
 	data, err := serial.UnmarshalByteSlices(seekRequestPrefixLengths, b)
 	if err != nil {
@@ -60,6 +62,7 @@ var seekResponsePacker = serial.SlicesPacker{
 	Size:  1,
 }
 
+// Marshal serializes the SeekResponse
 func (s *SeekResponse) Marshal() ([]byte, error) {
 	data := make([][]byte, len(s.Nodes))
 	for i, id := range s.Nodes {
@@ -76,6 +79,7 @@ func (s *SeekResponse) Marshal() ([]byte, error) {
 	return serial.MarshalByteSlices(seekResponsePrefixLengths, data)
 }
 
+// Unmarshal deserializes the SeekResponse
 func (s *SeekResponse) Unmarshal(b []byte) error {
 	data, err := serial.UnmarshalByteSlices(seekResponsePrefixLengths, b)
 	if err != nil {
@@ -108,8 +112,8 @@ func (n *Node) HandleSeek(r SeekRequest) SeekResponse {
 	}
 }
 
-// SearchRange can be used as an Accept function and will return true when one
-// of the nodes in the response falls into the range.
+// Search can be used as an Accept function and will return true when one of the
+// nodes in the response falls into the range.
 func Search(target dht.NodeID) func(SeekResponse) bool {
 	return func(sr SeekResponse) bool {
 		for _, id := range sr.Nodes {

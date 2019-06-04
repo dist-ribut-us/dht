@@ -76,9 +76,8 @@ func (p *prefixBranch) searchn(target NodeID, ids []NodeID, closerThan NodeID, d
 		if closerThan == nil || p.val.Xor(target).Compare(closerThan) == -1 {
 			ids[0] = p.val
 			return 1
-		} else {
-			return 0
 		}
+		return 0
 	}
 
 	bit := target.Bit(depth)
