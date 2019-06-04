@@ -18,10 +18,11 @@ type seekResponseHandler interface {
 }
 
 type Node struct {
-	net     *dhtnetwork.Node
-	gv      *GodView
-	send    chan interface{}
-	waiting *waiting
+	net           *dhtnetwork.Node
+	gv            *GodView
+	send          chan interface{}
+	waiting       *waiting
+	runningUpdate bool
 }
 
 type stop struct{}
@@ -32,9 +33,9 @@ func (gv *GodView) AddNode() {
 	rand.Read(id)
 
 	n := &Node{
-		net:     dhtnetwork.New(id, 16),
+		net:     dhtnetwork.New(id, 64),
 		gv:      gv,
-		send:    make(chan interface{}, 30),
+		send:    make(chan interface{}, 300),
 		waiting: newwaiting(),
 	}
 
@@ -85,6 +86,11 @@ func (n *Node) runUpdate() {
 		n.send <- runUpdate{}
 	}()
 
+	if n.runningUpdate {
+		return
+	}
+	n.runningUpdate = true
+
 	for len(n.net.Link(0)) == 0 {
 		n.net.AddNodeID(n.gv.RandID(), true)
 	}
@@ -109,6 +115,7 @@ func (n *Node) runUpdate() {
 			u.HandleNoResponse(sr.ID)
 		}
 	}
+	n.runningUpdate = false
 }
 
 func (n *Node) Seek(target dht.NodeID) bool {
@@ -121,10 +128,7 @@ func (n *Node) Seek(target dht.NodeID) bool {
 		return b
 	}
 
-	println(n.net.Node.KnownIDs())
-	c := 0
 	for ok, id, sr := s.Next(); ok; ok, id, sr = s.Next() {
-		c++
 		srIDstr := encodeToString(sr.ID)
 		n.waiting.set(srIDstr, s)
 		n.gv.Send(id, sr)
@@ -140,9 +144,6 @@ func (n *Node) Seek(target dht.NodeID) bool {
 			s.HandleNoResponse(sr.ID)
 		}
 	}
-	print(s.Successes)
-	print(" / ")
-	println(s.Responses)
 
 	return found
 }
