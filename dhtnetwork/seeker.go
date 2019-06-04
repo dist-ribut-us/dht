@@ -3,14 +3,16 @@ package dhtnetwork
 import (
 	"crypto/rand"
 	"github.com/dist-ribut-us/dht"
+	"sort"
 )
 
 var DefaultIDLen = 10
 
 type Seeker struct {
+	target     dht.NodeID
 	SkipUpdate bool
 	network    *Node
-	queue      *dht.List
+	queue      []dht.NodeID
 	sent       map[string]bool
 	Accept     func(SeekResponse) bool
 	done       bool
@@ -21,8 +23,8 @@ type Seeker struct {
 
 func (n *Node) Seek(target dht.NodeID) *Seeker {
 	s := &Seeker{
+		target:     target,
 		network:    n,
-		queue:      dht.NewList(target, -1),
 		sent:       make(map[string]bool),
 		reqID2node: make(map[string]dht.NodeID),
 	}
@@ -45,7 +47,9 @@ func (s *Seeker) Handle(r SeekResponse) bool {
 		s.network.AddNodeID(nID, true)
 	}
 
-	s.queue.AddNodeIDs(r.Nodes)
+	for _, id := range r.Nodes {
+		s.queue = insert(s.queue, s.target, id)
+	}
 
 	if s.Accept != nil && s.Accept(r) {
 		s.done = true
@@ -68,7 +72,7 @@ func (s *Seeker) HandleNoResponse(requestID []byte) {
 
 func (s *Seeker) seekRequest(id dht.NodeID, mustBeCloser bool) SeekRequest {
 	sr := SeekRequest{
-		Target:       s.queue.Target(),
+		Target:       s.target,
 		ID:           make([]byte, DefaultIDLen),
 		MustBeCloser: mustBeCloser,
 	}
@@ -88,8 +92,8 @@ func (s *Seeker) Next() (bool, dht.NodeID, SeekRequest) {
 		return false, nil, SeekRequest{}
 	}
 	var id dht.NodeID
-	for i := 0; i < MaxQueueDepth; i++ {
-		if idi := s.queue.Get(i); !s.sent[idi.String()] {
+	for i := 0; i < MaxQueueDepth && i < len(s.queue); i++ {
+		if idi := s.queue[i]; !s.sent[idi.String()] {
 			id = idi
 			break
 		}
@@ -98,4 +102,18 @@ func (s *Seeker) Next() (bool, dht.NodeID, SeekRequest) {
 		return false, nil, SeekRequest{}
 	}
 	return true, id, s.seekRequest(id, true)
+}
+
+func insert(q []dht.NodeID, self, id dht.NodeID) []dht.NodeID {
+	d := self.Xor(id)
+	idx := sort.Search(len(q), func(i int) bool {
+		return q[i].Xor(self).Compare(d) != -1
+	})
+	if idx < len(q) && q[idx].Equal(id) {
+		return q
+	}
+	q = append(q, nil)
+	copy(q[idx+1:], q[idx:])
+	q[idx] = id
+	return q
 }

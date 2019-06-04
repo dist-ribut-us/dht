@@ -73,3 +73,27 @@ func TestSeekResponseRoundTrip(t *testing.T) {
 	assert.NoError(t, out.Unmarshal(b))
 	assert.Equal(t, resp, out)
 }
+
+func TestInsert(t *testing.T) {
+	var q []dht.NodeID
+	self := dht.NodeID{25}
+	ids := []dht.NodeID{
+		{20},
+		{100},
+	}
+
+	q = insert(q, self, ids[0])
+	assert.Len(t, q, 1)
+	assert.Equal(t, ids[0], q[0])
+
+	q = insert(q, self, ids[0])
+	assert.Len(t, q, 1)
+	assert.Equal(t, ids[0], q[0])
+
+	q = insert(q, self, ids[1])
+	assert.Len(t, q, 2)
+	assert.Equal(t, ids[0], q[0])
+	assert.Equal(t, ids[1], q[1])
+
+	assert.Equal(t, -1, q[0].Xor(self).Compare(q[1].Xor(self)))
+}

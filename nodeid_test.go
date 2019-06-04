@@ -1,10 +1,19 @@
 package dht
 
 import (
+	"crypto/rand"
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
+
+const FuzzLoops = 100
+
+func randID(ln int) NodeID {
+	id := make(NodeID, ln)
+	rand.Read(id)
+	return id
+}
 
 func TestXor(t *testing.T) {
 	a := NodeID{1, 5}

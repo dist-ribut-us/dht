@@ -70,31 +70,6 @@ func TestToPrune(t *testing.T) {
 	tr.root.prune(0, false)
 }
 
-func TestFuzzTree(t *testing.T) {
-	ln := 10
-	for i := 0; i < FuzzLoops; i++ {
-		l := NewList(randID(ln), -1)
-		tr := newTree(l.target, 64)
-		tr.root.checkNestedAllowed(false, 0)
-
-		for j := 0; j < FuzzLoops; j++ {
-			id := randID(ln)
-			tr.insert(id)
-			l.AddNodeID(id)
-			assert.Equal(t, j, tr.Len())
-		}
-		ids := tr.searchn(l.target, FuzzLoops/10, nil)
-		assert.Len(t, ids, FuzzLoops/10)
-		for j, id := range ids {
-			assert.Equal(t, l.nodeIDs[j], id)
-		}
-		assert.Equal(t, ids, tr.searchn(l.target, FuzzLoops/5, l.diffs[FuzzLoops/10]))
-
-		tr.prune()
-		tr.root.checkAllowed()
-	}
-}
-
 func (p *prefixBranch) checkAllowed() {
 	if p.allowed > 0 && p.descendants > p.allowed {
 		panic("too many descendants")
