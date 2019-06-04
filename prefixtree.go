@@ -2,6 +2,7 @@ package dht
 
 import (
 	"fmt"
+	"sync"
 )
 
 var _ = fmt.Println
@@ -60,10 +61,14 @@ func (p *prefixBranch) search(target NodeID, depth uint) NodeID {
 		return p.val
 	}
 	bit := target.Bit(depth)
-	if p.branches[bit] != nil {
+	if p.branches[bit] != nil && p.branches[bit].descendants > 0 {
 		return p.branches[bit].search(target, depth+1)
 	}
-	return p.branches[bit^1].search(target, depth+1)
+	bit ^= 1
+	if p.branches[bit] != nil && p.branches[bit].descendants > 0 {
+		return p.branches[bit].search(target, depth+1)
+	}
+	return nil
 }
 
 func (p *prefixBranch) searchn(target NodeID, ids []NodeID, closerThan NodeID, depth uint) int {
@@ -111,9 +116,10 @@ func (p *prefixBranch) prune(n uint, seenAllowed bool) bool {
 			panic("oh boy")
 		}
 		if n > 0 {
-			if n != 1 {
-				panic("really bad")
-			}
+			// if n != 1 {
+			// 	println(n)
+			// 	panic("really bad")
+			// }
 			p.val = nil
 			p.descendants = 0
 		}
@@ -140,9 +146,9 @@ func (p *prefixBranch) prune(n uint, seenAllowed bool) bool {
 		r = n
 	}
 
-	if r > 0 && p.branches[0] == nil {
-		panic("something bad")
-	}
+	// if r > 0 && p.branches[0] == nil {
+	// 	panic("something bad")
+	// }
 
 	if p.branches[0] != nil {
 		if p.branches[0].prune(r, seenAllowed) {
@@ -180,15 +186,18 @@ func (p *prefixBranch) removeNode(id NodeID, depth uint) {
 }
 
 type tree struct {
-	root    *prefixBranch
-	id      NodeID
-	toPrune uint
+	root         *prefixBranch
+	id           NodeID
+	toPrune      uint
+	startBuffers int
+	sync.RWMutex
 }
 
 func newTree(id NodeID, startBuffers int) *tree {
 	t := &tree{
-		root: &prefixBranch{},
-		id:   id,
+		root:         &prefixBranch{},
+		id:           id,
+		startBuffers: startBuffers,
 	}
 
 	allowed := uint(startBuffers)
@@ -205,21 +214,30 @@ func newTree(id NodeID, startBuffers int) *tree {
 }
 
 func (t *tree) insert(id NodeID) {
+	t.Lock()
 	t.toPrune = t.root.insert(id, 0)
+	t.Unlock()
 }
 
-func (t *tree) search(id NodeID) NodeID {
-	return t.root.search(id, 0)
+func (t *tree) search(target NodeID) NodeID {
+	t.RLock()
+	id := t.root.search(target, 0)
+	t.RUnlock()
+	return id
 }
 
 func (t *tree) searchn(id NodeID, n int, closerThan NodeID) []NodeID {
+	t.RLock()
 	ids := make([]NodeID, n)
 	filled := t.root.searchn(id, ids, closerThan, 0)
+	t.RUnlock()
 	return ids[:filled]
 }
 
 func (t *tree) prune() {
+	t.Lock()
 	t.root.prune(0, false)
+	t.Unlock()
 }
 
 func (t *tree) Len() int {
@@ -227,5 +245,7 @@ func (t *tree) Len() int {
 }
 
 func (t *tree) remove(id NodeID) {
+	t.Lock()
 	t.root.removeNode(id, 0)
+	t.Unlock()
 }

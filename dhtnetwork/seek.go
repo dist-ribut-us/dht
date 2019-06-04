@@ -102,7 +102,11 @@ func (n *Node) HandleSeek(r SeekRequest) SeekResponse {
 	if !n.SkipRequestUpdate {
 		n.AddNodeID(r.From, true)
 	}
-	return n.bruteSeek(r)
+	// return n.bruteSeek(r)
+	return SeekResponse{
+		ID:    r.ID,
+		Nodes: n.SeekN(r.Target, n.ReturnNodes, r.MustBeCloser),
+	}
 }
 
 // There's a more efficient way to do this, but this works. When I write the

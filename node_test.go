@@ -48,5 +48,23 @@ func TestFuzzNode(t *testing.T) {
 				}
 			}
 		}
+
+		// make sure the tree has the same nodes as the list
+		n.tree = newTree(n.NodeID, 32)
+		for _, l := range n.links {
+			for _, id := range l.nodeIDs {
+				n.tree.insert(id)
+			}
+		}
+
+		for j := 0; j < FuzzLoops; j++ {
+			id := randID(ln)
+			b := n.bruteSeek(id, true)
+			e := n.elegantSeek(id, true)
+			assert.Equal(t, b, e)
+			b = n.bruteSeek(id, false)
+			e = n.elegantSeek(id, false)
+			assert.Equal(t, b, e)
+		}
 	}
 }

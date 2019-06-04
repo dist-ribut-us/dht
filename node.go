@@ -4,6 +4,7 @@ type Node struct {
 	NodeID
 	links     []*List
 	blacklist *blacklist
+	tree      *tree
 }
 
 func New(id []byte, startBuffers int) *Node {
@@ -11,6 +12,7 @@ func New(id []byte, startBuffers int) *Node {
 		NodeID:    NodeID(id),
 		blacklist: newblacklist(),
 		links:     make([]*List, len(id)*8),
+		tree:      newTree(NodeID(id), 64),
 	}
 	if startBuffers < 1 {
 		startBuffers = 1
@@ -43,6 +45,11 @@ func (n *Node) AddNodeID(id NodeID, overrideBlacklist bool) bool {
 		}
 	}
 
+	n.tree.insert(id)
+	if n.tree.toPrune >= uint(n.tree.startBuffers) {
+		n.tree.prune()
+	}
+
 	d := n.Xor(id)
 	lk := n.links[d.LeadingZeros()]
 	ins, j := lk.AddNodeID(id)
@@ -69,29 +76,24 @@ func (n *Node) RemoveNodeID(id NodeID, blacklist bool) {
 	}
 	idx := n.Xor(id).LeadingZeros()
 	n.links[idx].RemoveNodeID(id)
+	n.tree.remove(id)
 }
 
 func (n *Node) Seek(target NodeID, mustBeCloser bool) NodeID {
-	return n.bruteSeek(target, mustBeCloser)
+	return n.elegantSeek(target, mustBeCloser)
+}
+
+func (n *Node) SeekN(target NodeID, i int, mustBeCloser bool) []NodeID {
+	var c NodeID
+	if mustBeCloser {
+		c = n.Xor(target)
+	}
+	return n.tree.searchn(target, i, c)
 }
 
 func (n *Node) elegantSeek(target NodeID, mustBeCloser bool) NodeID {
-	ln := len(target)
-	if ln != len(n.NodeID) {
-		return nil
-	}
-	d := n.Xor(target)
-	var best, bestd NodeID
-	for idx := d.LeadingZeros(); best == nil && idx < ln; idx++ {
-		t := n.links[idx].Seek(target)
-		td := t.Xor(target)
-		if best == nil || td.Compare(bestd) == -1 {
-			best = t
-			bestd = td
-		}
-	}
-
-	if best == nil || (mustBeCloser && d.Compare(best.Xor(target)) == -1) {
+	best := n.tree.search(target)
+	if mustBeCloser && n.Xor(target).Compare(best.Xor(target)) == -1 {
 		return nil
 	}
 	return best
