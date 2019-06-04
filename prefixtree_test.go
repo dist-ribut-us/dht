@@ -72,9 +72,10 @@ func TestToPrune(t *testing.T) {
 
 func TestFuzzTree(t *testing.T) {
 	ln := 10
-	for i := 0; i < 1; i++ {
+	for i := 0; i < FuzzLoops; i++ {
 		l := NewList(randID(ln), -1)
 		tr := newTree(l.target, 64)
+		tr.root.checkNestedAllowed(false, 0)
 
 		for j := 0; j < FuzzLoops; j++ {
 			id := randID(ln)
@@ -104,5 +105,21 @@ func (p *prefixBranch) checkAllowed() {
 	}
 	if p.branches[1] != nil {
 		p.branches[1].checkAllowed()
+	}
+}
+
+func (p *prefixBranch) checkNestedAllowed(seenAllowed bool, depth int) {
+	if p.allowed > 0 {
+		if seenAllowed {
+			panic("nested")
+		}
+		seenAllowed = true
+	}
+
+	if p.branches[0] != nil {
+		p.branches[0].checkNestedAllowed(seenAllowed, depth+1)
+	}
+	if p.branches[1] != nil {
+		p.branches[1].checkNestedAllowed(seenAllowed, depth+1)
 	}
 }

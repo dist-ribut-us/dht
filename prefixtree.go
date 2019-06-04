@@ -91,11 +91,12 @@ func (p *prefixBranch) searchn(target NodeID, ids []NodeID, closerThan NodeID, d
 }
 
 func (p *prefixBranch) setAllowed(target NodeID, atDepth, allowed, depth uint) {
+	b := p.get(target.Bit(depth))
 	if depth == atDepth {
-		p.allowed = allowed
+		b.allowed = allowed
 		return
 	}
-	p.get(target.Bit(depth)).setAllowed(target, atDepth, allowed, depth+1)
+	b.setAllowed(target, atDepth, allowed, depth+1)
 }
 
 //bool indicates if it's safe to remove this branch after pruning
