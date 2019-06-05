@@ -7,7 +7,7 @@ import (
 
 func main() {
 	net := sim.New()
-	net.AddNodes(200)
+	net.AddNodes(1500)
 
 	net.Run()
 	time.Sleep(time.Minute * 10)

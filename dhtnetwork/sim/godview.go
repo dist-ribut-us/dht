@@ -17,6 +17,7 @@ type GodView struct {
 	IDs        []dht.NodeID
 	UpdateFreq time.Duration
 	AddFreq    time.Duration
+	MaxNodes   int
 	RemoveFreq time.Duration
 	RemoveOdds float64
 	SeekFreq   time.Duration
@@ -28,10 +29,11 @@ func New() *GodView {
 	return &GodView{
 		nodes:      make(map[string]*Node),
 		UpdateFreq: time.Millisecond * 1000,
-		AddFreq:    time.Millisecond * 200,
+		AddFreq:    time.Millisecond * 10,
+		MaxNodes:   5000,
 		RemoveFreq: time.Second * 3,
 		SeekFreq:   time.Millisecond * 1000,
-		RemoveOdds: 0.0005,
+		RemoveOdds: 0.005,
 	}
 }
 
@@ -39,7 +41,9 @@ func (gv *GodView) Run() {
 	go func() {
 		for {
 			time.Sleep(gv.AddFreq)
-			gv.AddNode()
+			if len(gv.IDs) < gv.MaxNodes {
+				gv.AddNode()
+			}
 		}
 	}()
 
@@ -137,7 +141,7 @@ func (gv *GodView) send(n *Node, msg interface{}) bool {
 
 func (gv *GodView) add(n *Node) {
 	gv.Lock()
-	gv.nodes[n.net.String()] = n
-	gv.IDs = append(gv.IDs, n.net.NodeID)
+	gv.nodes[n.net.ID().String()] = n
+	gv.IDs = append(gv.IDs, n.net.ID())
 	gv.Unlock()
 }
